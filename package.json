@@ -1,0 +1,31 @@
+{
+  "name": "little-helper",
+  "version": "0.0.1",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/k-one-o-two/little-helper.git"
+  },
+  "author": "k102",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/k-one-o-two/little-helper/issues"
+  },
+  "homepage": "https://github.com/k-one-o-two/little-helper#readme",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "locallydb": "^0.0.9",
+    "node-telegram-bot-api": "^0.66.0",
+    "nodemon": "^3.1.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node-telegram-bot-api": "^0.64.7",
+    "ts-node": "^10.9.2"
+  }
+}
