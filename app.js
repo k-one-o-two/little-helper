@@ -11,20 +11,20 @@ const warnedUsers = db.collection('warnedUsers');
 
 const token = process.env.TOKEN;
 
-const adminList = [197668719];
+const adminList = process.env.ADMINS.split(',').map((id) => Number(id));
 
 const isFromAdmin = (message) => adminList.includes(message.from.id);
 
 const bot = new TelegramBot(token, { polling: true });
 
-console.info({ bot });
+bot.on('polling_error', console.log);
 
-// bot.onText(/.*/, (message) => {
-//   console.info(message.entities);
-// });
-
-bot.onText(/warn/, (message) => {
+bot.onText(/#warn\s?(.*)/, (message, match) => {
   const groupId = message.chat.id;
+
+  if (!isFromAdmin(message)) {
+    return;
+  }
 
   if (!message.reply_to_message) {
     return;
@@ -34,28 +34,67 @@ bot.onText(/warn/, (message) => {
     id: message.reply_to_message.from.id,
     username: message.reply_to_message.from.username,
     name: message.reply_to_message.from.first_name,
+    cnt: 1,
+    reason: match.length ? match[1] : '',
   };
 
-  if (warnedUsers.where({ id: userToRestrict.id }).length()) {
-    bot.sendMessage(groupId, `${userToRestrict.name} уже пора забанить!`);
+  const foundInCollection = warnedUsers.where({ id: userToRestrict.id }).items;
+
+  if (foundInCollection.length) {
+    if (foundInCollection[0].cnt === 1) {
+      warnedUsers.update(foundInCollection[0].cid, { cnt: 2 });
+      bot.sendMessage(
+        groupId,
+        `${userToRestrict.name}: второе предупреждение, нужно выдать РО на неделю.`,
+      );
+
+      return;
+    }
+    if (foundInCollection[0].cnt === 2) {
+      warnedUsers.update(foundInCollection[0].cid, { cnt: 3 });
+      bot.sendMessage(
+        groupId,
+        `${userToRestrict.name}: третье предупреждение, нужно забанить.`,
+      );
+
+      return;
+    }
+
     return;
   }
 
   warnedUsers.insert(userToRestrict);
-  bot.sendMessage(groupId, `${userToRestrict.name} записан`);
+  bot.sendMessage(groupId, `${userToRestrict.name} записан.`);
 });
 
 bot.onText(/list/, (message) => {
   const groupId = message.chat.id;
-  console.info(message.entities);
 
   const entities = message.entities;
+  if (!entities) {
+    return;
+  }
 
   if (entities.find((entity) => entity.type === 'mention')) {
-    console.info(warnedUsers.items);
-    const string = warnedUsers.items
-      .map((item) => `${item.name} (@${item.username})`)
-      .join('\n');
-    bot.sendMessage(groupId, `${string}`);
+    if (warnedUsers.items.length > 0) {
+      const string = warnedUsers.items
+        .sort((iA, iB) => iB.cnt - iA.cnt)
+        .map((item) => {
+          const flags = Array(item.cnt).fill('🏴‍☠️', 0, item.cnt).join('');
+          const lastActivity = `время последнего предупреждения: ${new Date(
+            item['$updated'],
+          ).toDateString()}`;
+
+          return `${flags} ${item.name} (@${
+            item.username
+          }), ${lastActivity}, причина: ${
+            item.reason ? item.reason : 'не указана'
+          }`;
+        })
+        .join('\n');
+      bot.sendMessage(groupId, `${string}`);
+    } else {
+      bot.sendMessage(groupId, `В моем списке никого нет. Пока.`);
+    }
   }
 });
